@@ -1,0 +1,38 @@
+on: 
+  workflow_call:
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install standard-version
+        run: npm i -g standard-version
+
+      - name: Clone repository
+        run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+
+      - name: Setup git
+        run: |
+          git config --global user.name Christian Curi
+          git config --global user.email c.christiancuri@gmail.com
+
+      - name: Create semantic release
+        run: |
+          standard-version --commit-all --skip.commit=true --no-verify
+          git add .
+          git commit -m "chore(release): new release [ci skip]" --no-verify
+
+      - name: Push version to develop branch
+        run: git push -u origin develop -f --follow-tags
+
+      - name: Push version to production branch
+        run: |
+          git checkout -b production
+          git push -u origin production -f
