@@ -61,7 +61,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          file: ./Dockerfile
+          context: .
           tags: zellim/${{ inputs.name }}:${{ github.sha }}
 
       - name: Update Environment
