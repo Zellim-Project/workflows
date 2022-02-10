@@ -1,0 +1,102 @@
+on: 
+  workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
+      dockerFileName:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      HOST:
+        required: true
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install standard-version
+        run: npm i -g standard-version
+
+      - name: Clone repository
+        run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+
+      - name: Setup git
+        run: |
+          git config --global user.name Christian Curi
+          git config --global user.email c.christiancuri@gmail.com
+
+      - name: Create semantic release
+        run: |
+          standard-version --commit-all --skip.commit=true --no-verify
+          git add .
+          git commit -m "chore(release): new release [ci skip]" --no-verify
+
+      - name: Push version to develop branch
+        run: git push -u origin develop -f --follow-tags
+
+      - name: Push version to production branch
+        run: |
+          git checkout -b production
+          git push -u origin production -f
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-multi-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-multi-buildx
+
+      - name: Setup ssh hosts
+        run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deleting github folder
+        run: rm -rf .git
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          file: ${{ inputs.dockerFileName }}
+          tags: zellim/${{ github.event.repository.name }}:${{ github.sha }}
+          target: DEPLOY
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      - name: Update Environment
+        run: |
+          ssh -tt ${{ inputs.username }}@${{ secrets.HOST }} 'sudo -i -u root bash -c "
+            kubectl set image deployment ${{ github.event.repository.name }} ${{ github.event.repository.name }}=zellim/${{ github.event.repository.name }}:${{ github.sha }}
+          "'
+
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
