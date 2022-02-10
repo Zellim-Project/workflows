@@ -1,9 +1,13 @@
 on: 
   workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         required: true
-      HOST_PRODUCTION:
+      HOST:
         required: true
       DOCKER_USERNAME:
         required: true
@@ -47,7 +51,7 @@ jobs:
           git push -u origin production -f
 
       - name: Setup ssh hosts
-        run: ssh-keyscan -t rsa ${{ secrets.HOST_PRODUCTION }} >> ~/.ssh/known_hosts
+        run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
 
       - name: Deleting github folder
         run: rm -rf .git
@@ -73,6 +77,6 @@ jobs:
 
       - name: Update Environment
         run: |
-          ssh -tt christiancuri@${{ secrets.HOST_PRODUCTION }} 'sudo -i -u root bash -c "
+          ssh -tt ${{ inputs.username }}@${{ secrets.HOST }} 'sudo -i -u root bash -c "
             kubectl set image deployment ${{ github.event.repository.name }} ${{ github.event.repository.name }}=zellim/${{ github.event.repository.name }}:${{ github.sha }}
           "'
