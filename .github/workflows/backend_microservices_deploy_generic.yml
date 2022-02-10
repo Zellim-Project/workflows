@@ -1,0 +1,63 @@
+on: 
+  workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
+      name:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      HOST:
+        required: true
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup ssh hosts
+        run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deleting github folder
+        run: rm -rf .git
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: zellim/${{ inputs.name }}:${{ github.sha }}
+
+      - name: Update Environment
+        run: |
+          ssh -tt ${{ inputs.username }}@${{ secrets.HOST }} 'sudo -i -u root bash -c "
+            kubectl set image deployment ${{ inputs.name }} ${{ inputs.name }}=zellim/${{ inputs.name }}:${{ github.sha }}
+          "'
