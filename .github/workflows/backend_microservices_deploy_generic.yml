@@ -31,6 +31,12 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Get common files
+        run: |
+          git clone git@github.com:Zellim-Project/common-deploy-files.git
+          cp common-deploy-files/backend/* .
+          rm -rf common-deploy-files
+
       - name: Setup ssh hosts
         run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
 
