@@ -1,0 +1,33 @@
+on: 
+  workflow_call:
+    inputs:
+      lockFile:
+        type: string
+        
+jobs:
+  eslint:
+    name: Code Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: "node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
+
+      - name: Use Node.js 16
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate Eslint
+        run: yarn lint
+        
+      - name: Validate Types
+        run: yarn build
