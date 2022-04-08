@@ -15,5 +15,5 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GH_TOKEN }}"
           MERGE_LABELS: ""
           MERGE_REQUIRED_APPROVALS: "1"
-          MERGE_RETRIES: "7"
-          MERGE_RETRY_SLEEP: "10000"
+          MERGE_RETRIES: "10"
+          MERGE_RETRY_SLEEP: "20000"
