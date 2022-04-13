@@ -63,6 +63,5 @@ jobs:
             cd ${{ inputs.path }}/${{ github.event.repository.name }};
             rm -rf env.yml;
             unzip -u -o -q archive.zip;
-            yarn;
             pm2 reload ${{ github.event.repository.name }} --update-env;
           "'
