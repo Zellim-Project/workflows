@@ -1,0 +1,64 @@
+on: 
+  workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
+      path:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      HOST:
+        required: true
+        
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup ssh hosts
+        run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Deleting github folder
+        run: rm -rf .git
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Compress Project
+        run: zip -r archive.zip .
+
+      - name: Sync Project
+        run: rsync -a --rsync-path="sudo rsync" archive.zip ${{ inputs.username }}@${{ secrets.HOST }}:${{ inputs.path }}/${{ github.event.repository.name }}/archive.zip
+
+      - name: Remote Deploy
+        run: |
+          ssh -tt ${{ inputs.username }}@${{ secrets.HOST }} 'sudo -i -u root bash -c "
+            cd ${{ inputs.path }}/${{ github.event.repository.name }};
+            rm -rf env.yml;
+            unzip -u -o -q archive.zip;
+            yarn;
+            pm2 reload ${{ github.event.repository.name }} --update-env;
+          "'
