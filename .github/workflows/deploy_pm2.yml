@@ -17,13 +17,15 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [16.x]
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - uses: actions/cache@v3
+        with:
+          path: "node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.5.4
@@ -33,10 +35,11 @@ jobs:
       - name: Setup ssh hosts
         run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
+      - name: Use Node.js 16
+        uses: actions/setup-node@v2
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "16"
+          cache: "yarn"
 
       - name: Deleting github folder
         run: rm -rf .git
