@@ -62,4 +62,6 @@ jobs:
           ssh -tt ${{ inputs.username }}@${{ inputs.HOST }} 'sudo -i -u root bash -c "
             cd ${{ inputs.path }};
             unzip -u -o -q archive.zip;
+            rm -rf archive.zip;
+            mv build/* .;
           "'
