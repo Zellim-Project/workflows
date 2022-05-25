@@ -52,7 +52,7 @@ jobs:
         run: yarn build
 
       - name: Compress Project
-        run: zip -r archive.zip .
+        run: zip -r archive.zip build
 
       - name: Sync Project
         run: rsync -a --rsync-path="sudo rsync" archive.zip ${{ inputs.username }}@${{ inputs.HOST }}:${{ inputs.path }}/archive.zip
