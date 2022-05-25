@@ -1,0 +1,65 @@
+on: 
+  workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
+      path:
+        required: true
+        type: string
+      HOST:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+        
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - uses: actions/cache@v3
+        with:
+          path: "node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup ssh hosts
+        run: ssh-keyscan -t rsa ${{ inputs.HOST }} >> ~/.ssh/known_hosts
+
+      - name: Use Node.js 16
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+          cache: "yarn"
+
+      - name: Deleting github folder
+        run: rm -rf .git
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build Project
+        run: yarn build
+
+      - name: Compress Project
+        run: zip -r archive.zip .
+
+      - name: Sync Project
+        run: rsync -a --rsync-path="sudo rsync" archive.zip ${{ inputs.username }}@${{ inputs.HOST }}:${{ inputs.path }}/archive.zip
+
+      - name: Remote Deploy
+        run: |
+          ssh -tt ${{ inputs.username }}@${{ inputs.HOST }} 'sudo -i -u root bash -c "
+            cd ${{ inputs.path }};
+            unzip -u -o -q archive.zip;
+          "'
