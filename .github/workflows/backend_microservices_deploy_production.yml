@@ -25,16 +25,16 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - uses: actions/cache@v3
-        with:
-          path: "node_modules"
-          key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
-
       - name: Install standard-version
         run: npm i -g standard-version
 
       - name: Clone repository
         run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+        
+      - uses: actions/cache@v3
+        with:
+          path: "node_modules"
+          key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
 
       - name: Setup git
         run: |
