@@ -50,6 +50,11 @@ jobs:
       - name: Push version to develop branch
         run: git push -u origin develop -f --follow-tags
 
+      - name: Push version to production branch
+        run: |
+          git checkout -b production
+          git push -u origin production -f
+
       - name: Get common files
         run: |
           git clone git@github.com:Zellim-Project/common-deploy-files.git
