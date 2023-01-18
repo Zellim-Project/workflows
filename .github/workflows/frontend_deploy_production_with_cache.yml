@@ -7,6 +7,10 @@ on:
       dockerFileName:
         required: true
         type: string
+      type:
+        default: 'normal'
+        description: 'Value can be normal - hotfix'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         required: true
@@ -30,9 +34,14 @@ jobs:
 
       - name: Install standard-version
         run: npm i -g standard-version
-
-      - name: Clone repository
+        
+      - name: Clone repository - HotFix
         run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+        if: ${{ inputs.type == 'hotfix' }}
+
+      - name: Clone repository - Production
+        run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+        if: ${{ inputs.type == 'normal' }}
 
       - name: Setup git
         run: |
@@ -40,15 +49,18 @@ jobs:
           git config --global user.email c.christiancuri@gmail.com
 
       - name: Create semantic release
+        if: ${{ inputs.type == 'normal' }}
         run: |
           standard-version --commit-all --skip.commit=true --no-verify
           git add .
           git commit -m "chore(release): new release [ci skip]" --no-verify
 
       - name: Push version to develop branch
+        if: ${{ inputs.type == 'normal' }}
         run: git push -u origin develop -f --follow-tags
 
       - name: Push version to production branch
+        if: ${{ inputs.type == 'normal' }}
         run: |
           git checkout -b production
           git push -u origin production -f
