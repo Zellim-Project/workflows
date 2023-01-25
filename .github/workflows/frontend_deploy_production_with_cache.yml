@@ -36,7 +36,7 @@ jobs:
         run: npm i -g standard-version
         
       - name: Clone repository - HotFix
-        run: git clone git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
+        run: git clone -b production git@github.com:${{ github.repository_owner }}/${{ github.event.repository.name }}.git .
         if: ${{ inputs.type == 'hotfix' }}
 
       - name: Clone repository - Production
