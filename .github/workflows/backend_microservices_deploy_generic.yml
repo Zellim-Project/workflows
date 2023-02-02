@@ -27,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+    
       - name: Clone repository - Staging
         run: git clone -b develop git@github.com:${{ github.repository_owner }}/${{ inputs.name }}.git .
         if: ${{ inputs.type == 'staging' }}
@@ -43,11 +48,6 @@ jobs:
         with:
           path: "node_modules"
           key: ${{ runner.os }}-modules-${{ hashFiles('yarn.lock') }}
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
           
       - name: Setup git
         run: |
