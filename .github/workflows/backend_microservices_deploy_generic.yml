@@ -7,6 +7,10 @@ on:
       name:
         required: true
         type: string
+      type:
+        default: 'develop'
+        description: 'Value can be develop | staging | staging-hotfix'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         required: true
@@ -23,8 +27,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Clone repository - Staging
+        run: git clone -b develop git@github.com:${{ github.repository_owner }}/${{ inputs.name }}.git .
+        if: ${{ inputs.type == 'staging' }}
+        
+      - name: Clone repository - Staging [HotFix]
+        run: git clone -b staging git@github.com:${{ github.repository_owner }}/${{ inputs.name }}.git .
+        if: ${{ inputs.type == 'staging-hotfix' }}
+    
       - name: Checkout
         uses: actions/checkout@v2
+        if: ${{ inputs.type == 'develop' }}
 
       - uses: actions/cache@v3
         with:
@@ -35,6 +48,20 @@ jobs:
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: Setup git
+        run: |
+          git config --global user.name Christian Curi
+          git config --global user.email c.christiancuri@gmail.com
+          
+      - name: Push version to staging branch
+        if: ${{ inputs.type == 'staging' }}
+        run: |
+          git checkout -b staging
+          echo " " >> RELEASE.md
+          git add .
+          git commit -m "ci(release): staging [ci skip]" --no-verify
+          git push -u origin staging -f
 
       - name: Get common files
         run: |
