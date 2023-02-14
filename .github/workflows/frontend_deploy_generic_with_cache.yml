@@ -10,6 +10,10 @@ on:
       name:
         required: true
         type: string
+      type:
+        default: 'develop'
+        description: 'Value can be develop | staging | staging-hotfix'
+        type: string
     secrets:
       SSH_PRIVATE_KEY:
         required: true
@@ -26,8 +30,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      - name: Clone repository - Staging
+        run: git clone -b develop git@github.com:${{ github.repository_owner }}/${{ inputs.name }}.git .
+        if: ${{ inputs.type == 'staging' }}
+        
+      - name: Clone repository - Staging [HotFix]
+        run: git clone -b staging git@github.com:${{ github.repository_owner }}/${{ inputs.name }}.git .
+        if: ${{ inputs.type == 'staging-hotfix' }}
+    
       - name: Checkout
         uses: actions/checkout@v2
+        if: ${{ inputs.type == 'develop' }}
+        
+      - name: Setup git
+        run: |
+          git config --global user.name Christian Curi
+          git config --global user.email c.christiancuri@gmail.com
 
       - name: Cache Docker layers
         uses: actions/cache@v2
@@ -36,11 +59,15 @@ jobs:
           key: ${{ runner.os }}-multi-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-multi-buildx
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+            
+      - name: Push version to staging branch
+        if: ${{ inputs.type == 'staging' }}
+        run: |
+          git checkout -b staging
+          echo " " >> RELEASE.md
+          git add .
+          git commit -m "ci(release): staging [ci skip]" --no-verify
+          git push -u origin staging -f
 
       - name: Setup ssh hosts
         run: ssh-keyscan -t rsa ${{ secrets.HOST }} >> ~/.ssh/known_hosts
